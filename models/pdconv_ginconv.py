@@ -71,8 +71,8 @@ class PDConv_GINConvNet(torch.nn.Module):
             self.conv_xc3 = nn.Conv1d(in_channels=n_filters, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xc3 = nn.BatchNorm1d(n_filters)
 
-        out_dim = embed_dim - self.num_layers*(self.kernel_size - self.stride)
-        self.fc_xc = nn.Linear(32*out_dim, output_dim)            
+        self.out_dim = embed_dim - self.num_layers*(self.kernel_size - self.stride)
+        self.fc_xc = nn.Linear(32*self.out_dim, output_dim)            
         self.bn_fc = nn.BatchNorm1d(output_dim)
 
         # combined layers
@@ -114,9 +114,6 @@ class PDConv_GINConvNet(torch.nn.Module):
             conv_xc = self.conv_xc1(xc)
             conv_xc = self.bn_xc1(conv_xc)
             conv_xc = self.relu(conv_xc)
-            
-            # flatten
-            xc = conv_xc.view(-1, 32 * 121)
 
         elif self.num_layers == 2:
             conv_xc = self.conv_xc1(xc)
@@ -126,9 +123,6 @@ class PDConv_GINConvNet(torch.nn.Module):
             conv_xc = self.conv_xc2(conv_xc)
             conv_xc = self.bn_xc2(conv_xc)
             conv_xc = self.relu(conv_xc)
-            
-            # flatten
-            xc = conv_xc.view(-1, 32 * 114)
 
         elif self.num_layers == 3:
             conv_xc = self.conv_xc1(xc)
@@ -143,8 +137,8 @@ class PDConv_GINConvNet(torch.nn.Module):
             conv_xc = self.bn_xc3(conv_xc)
             conv_xc = self.relu(conv_xc)
 
-            # flatten
-            xc = conv_xc.view(-1, 32 * 107)
+        # flatten
+        xc = conv_xc.view(-1, 32 * self.out_dim)
 
         # linear
         xc = self.fc_xc(xc)
