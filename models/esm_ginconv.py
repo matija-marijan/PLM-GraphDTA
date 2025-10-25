@@ -44,21 +44,21 @@ class ESM_GINConvNet(torch.nn.Module):
         if self.num_layers not in [1, 2, 3]:
             raise ValueError("num_layers must be between 1 and 3")
         if self.num_layers == 1:
-            self.fc_xt = nn.Linear(320, 128)
+            self.fc_xt = nn.Linear(960, 128)
             self.bn_xt = nn.BatchNorm1d(128)
 
         elif self.num_layers == 2:
-            self.fc_xt = nn.Linear(320, 192)
-            self.fc_xt2 = nn.Linear(192, 128)
-            self.bn_xt = nn.BatchNorm1d(192)
+            self.fc_xt = nn.Linear(960, 512)
+            self.fc_xt2 = nn.Linear(512, 128)
+            self.bn_xt = nn.BatchNorm1d(512)
             self.bn_xt2 = nn.BatchNorm1d(128)
 
         elif self.num_layers == 3:
-            self.fc_xt = nn.Linear(320, 256)
-            self.fc_xt2 = nn.Linear(256, 192)
-            self.fc_xt3 = nn.Linear(192, 128)
-            self.bn_xt = nn.BatchNorm1d(256)
-            self.bn_xt2 = nn.BatchNorm1d(192)
+            self.fc_xt = nn.Linear(960, 512)
+            self.fc_xt2 = nn.Linear(512, 256)
+            self.fc_xt3 = nn.Linear(256, 128)
+            self.bn_xt = nn.BatchNorm1d(512)
+            self.bn_xt2 = nn.BatchNorm1d(256)
             self.bn_xt3 = nn.BatchNorm1d(128)
 
         # combined layers

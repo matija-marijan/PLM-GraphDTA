@@ -59,23 +59,26 @@ class Vnoc_GINConvNet(torch.nn.Module):
         if self.num_layers == 1:
             self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xt1 = nn.BatchNorm1d(n_filters)
+            self.fc1_xt = nn.Linear(n_filters, output_dim)
 
         elif self.num_layers == 2:
             self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xt1 = nn.BatchNorm1d(n_filters)
-            self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt2 = nn.BatchNorm1d(n_filters)
+            self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=2*n_filters, kernel_size=self.kernel_size, stride=self.stride)
+            self.bn_xt2 = nn.BatchNorm1d(2*n_filters)
+            self.fc1_xt = nn.Linear(2*n_filters, output_dim)
 
         elif self.num_layers == 3:
             self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xt1 = nn.BatchNorm1d(n_filters)
-            self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt2 = nn.BatchNorm1d(n_filters)
-            self.conv_xt_3 = nn.Conv1d(in_channels=n_filters, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt3 = nn.BatchNorm1d(n_filters)
+            self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=2*n_filters, kernel_size=self.kernel_size, stride=self.stride)
+            self.bn_xt2 = nn.BatchNorm1d(2*n_filters)
+            self.conv_xt_3 = nn.Conv1d(in_channels=2*n_filters, out_channels=3*n_filters, kernel_size=self.kernel_size, stride=self.stride)
+            self.bn_xt3 = nn.BatchNorm1d(3*n_filters)
+            self.fc1_xt = nn.Linear(3*n_filters, output_dim)
 
         self.gmp_xt = GlobalMaxPooling1D()
-        self.fc1_xt = nn.Linear(n_filters, output_dim)
+        # self.fc1_xt = nn.Linear(n_filters, output_dim)
         self.bn_fc1 = nn.BatchNorm1d(output_dim)
 
         # combined layers
