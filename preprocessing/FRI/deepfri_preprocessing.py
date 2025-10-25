@@ -16,7 +16,7 @@ from tqdm import tqdm
 from collections import OrderedDict
 
 model_config = 'preprocessing/FRI/trained_models/model_config.json'
-ont = 'cc'
+ont = 'mf'
 emb_layer = 'global_max_pooling1d'
 
 with open(model_config) as json_file:
@@ -27,10 +27,10 @@ gcn = params['gcn']
 models = params['models']
 predictor = Predictor(models[ont], gcn = gcn)
 
-datasets = ['davis', 'kiba']
+datasets = ['davis', 'kiba', 'davis_mutation']
 for dataset in datasets:
     embeddings = []
-    processed_dataset = 'data/' + dataset + '/proteins_deepfri.json'
+    processed_dataset = 'data/' + dataset + '/proteins_deepfri_' + ont + '.json'
     if not os.path.isfile(processed_dataset):
 
         predictor = Predictor(models[ont], gcn=gcn)

@@ -10,15 +10,19 @@ from tqdm import tqdm
 import json
 from collections import OrderedDict
 
-model, alphabet = esm.pretrained.esm2_t6_8M_UR50D()
+# model, alphabet = esm.pretrained.esm2_t6_8M_UR50D()
+model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+final_layer = model.num_layers
+embed_dim = model.embed_dim
+
 if torch.cuda.is_available():
     model = model.cuda()
 batch_converter = alphabet.get_batch_converter()
 
-datasets = ['davis', 'kiba']
+datasets = ['davis', 'kiba', 'davis_mutation']
 for dataset in datasets:
     embeddings = []
-    processed_dataset = 'data/' + dataset + '/proteins_esm.json'
+    processed_dataset = 'data/' + dataset + '/proteins_esm_' + embed_dim + '.json'
 
     if not os.path.isfile(processed_dataset):
         proteins = json.load(open('data/' + dataset + "/proteins.json"), object_pairs_hook=OrderedDict)
@@ -41,10 +45,10 @@ for dataset in datasets:
 
             with torch.no_grad():
                 if torch.cuda.is_available():
-                    results = model(batch_tokens.cuda(), repr_layers=[6])
+                    results = model(batch_tokens.cuda(), repr_layers=[final_layer])
                 else:
-                    results = model(batch_tokens, repr_layers = [6])
-            token_representations = results["representations"][6]
+                    results = model(batch_tokens, repr_layers = [final_layer])
+            token_representations = results["representations"][final_layer]
 
             sequence_representations = []
             for j, tokens_len in enumerate(batch_lens):
