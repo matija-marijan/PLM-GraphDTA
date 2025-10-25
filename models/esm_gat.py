@@ -49,7 +49,7 @@ class ESM_GATNet(torch.nn.Module):
         self.readout = DGLLife_WeightedSumAndMax(output_dim)
 
         # ESM protein embedding linear layer
-        self.fc_xt = nn.Linear(320, 256)
+        self.fc_xt = nn.Linear(1280, 256)
 
         # combined layers
         self.fc1 = nn.Linear(512, 1024)

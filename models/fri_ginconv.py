@@ -48,9 +48,9 @@ class FRI_GINConvNet(torch.nn.Module):
             self.bn_xt = nn.BatchNorm1d(128)
 
         elif self.num_layers == 2:
-            self.fc_xt = nn.Linear(4096, 256)
-            self.fc_xt2 = nn.Linear(256, 128)
-            self.bn_xt = nn.BatchNorm1d(256)
+            self.fc_xt = nn.Linear(4096, 512)
+            self.fc_xt2 = nn.Linear(512, 128)
+            self.bn_xt = nn.BatchNorm1d(512)
             self.bn_xt2 = nn.BatchNorm1d(128)
 
         elif self.num_layers == 3:
