@@ -2,5 +2,6 @@ __pycache__
 other/
 wandb/
 data/processed/
+proteins_*
 trained_models/
 *.pt
