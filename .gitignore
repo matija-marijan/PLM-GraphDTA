@@ -5,3 +5,4 @@ data/processed/
 proteins_*
 trained_models/
 *.pt
+.ipynb_checkpoints
