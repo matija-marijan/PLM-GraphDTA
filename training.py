@@ -12,7 +12,7 @@ from models.ginconv import GINConvNet
 from models.pdc_ginconv import PDC_GINConvNet
 from models.vnoc_ginconv import Vnoc_GINConvNet
 from models.pdc_vnoc_ginconv import PDC_Vnoc_GINConvNet
-from models.esm_ginconv import ESM_GINConvNet
+from models.plm_ginconv import PLM_GINConvNet
 from models.fri_ginconv import FRI_GINConvNet
 
 from models.esm_gat import ESM_GATNet

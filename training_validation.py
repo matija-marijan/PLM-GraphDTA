@@ -12,8 +12,7 @@ from models.ginconv import GINConvNet
 from models.pdc_ginconv import PDC_GINConvNet
 from models.vnoc_ginconv import Vnoc_GINConvNet
 from models.pdc_vnoc_ginconv import PDC_Vnoc_GINConvNet
-from models.esm_ginconv import ESM_GINConvNet
-from models.fri_ginconv import FRI_GINConvNet
+from models.plm_ginconv import PLM_GINConvNet
 from models.pdconv_ginconv import PDConv_GINConvNet
 from models.pdconv_vnoc_ginconv import PDConv_Vnoc_GINConvNet
 
@@ -42,12 +41,6 @@ def train(model, device, train_loader, optimizer, epoch, wandb_log=False):
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
-        # if batch_idx % LOG_INTERVAL == 0:
-            # print('Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(epoch,
-            #                                                                batch_idx * len(data.x),
-            #                                                                len(train_loader.dataset),
-            #                                                                100. * batch_idx / len(train_loader),
-            #                                                                loss.item()))
     tqdm.write('Train loss: {:.6f}'.format(loss.item()))
     if wandb_log:
         wandb.log({"loss": loss.item()}, commit=False)
@@ -76,13 +69,15 @@ all_models = {
     'GINConvNet': GINConvNet, 
     'GATNet': GATNet, 
     'GAT_GCN': GAT_GCN, 
-    'GCNNet': GCNNet, 
-    'PDC_GINConvNet': PDC_GINConvNet, 
-    'Vnoc_GINConvNet': Vnoc_GINConvNet, 
-    'ESM_GINConvNet': ESM_GINConvNet, 
-    'FRI_GINConvNet': FRI_GINConvNet, 
-    'PDC_Vnoc_GINConvNet': PDC_Vnoc_GINConvNet,
+    'GCNNet': GCNNet,
+
     'ESM_GATNet': ESM_GATNet,
+    'PLM_GINConvNet': PLM_GINConvNet,
+    'Vnoc_GINConvNet': Vnoc_GINConvNet,    
+
+    'PDC_GINConvNet': PDC_GINConvNet, 
+    'PDC_Vnoc_GINConvNet': PDC_Vnoc_GINConvNet,
+
     'PDConv_GINConvNet': PDConv_GINConvNet,
     'PDConv_Vnoc_GINConvNet': PDConv_Vnoc_GINConvNet
 }
@@ -93,22 +88,23 @@ parser.add_argument('--dataset', type=str, choices=datasets, required=True,
                     help="Dataset name: 'davis' or 'kiba'.")
 parser.add_argument('--model', type=str, choices=list(all_models.keys()), required=True, 
                     help="Model name. Choose from: " + ", ".join(all_models.keys()) + ".")
+
 parser.add_argument('--cuda', type=int, default=0, 
                     help="CUDA device index (default: 0).")
 parser.add_argument('--seed', type=int, default=None,
                     help="Random seed for reproducibility (default: None).")
 parser.add_argument('--wandb', action='store_true', default=False,
                     help="Flag for using wandb logging (default: False).")
-parser.add_argument('-vf', '--validation_fold', type=int, default=0,
+parser.add_argument('--validation_fold', type=int, default=0,
                     help="Fold index to use for validation when using k-fold cross-validation (default: 0).")
-# parser.add_argument('--split_type', type=str, default=None,
-#                     help="Type of data split. Choose from: 'random', 'original', 'kfold', 'protein_cold', 'drug_cold', or 'fully_cold'.")
-# parser.add_argument('--mutation', action='store_true', default=False,
-#                     help="Flag for including protein sequence mutations for the Davis dataset (default: False).")
-parser.add_argument('--num_layers', type=int, default=3,
-                    help="Number of layers in the protein learning channel (default: 3).")
+
+parser.add_argument('--plm_layers', type=int, nargs='+', default=[320, 256, 128],
+                    help="List of layer sizes for the protein language model embedding branch (default: [320, 256, 128]).")
+parser.add_argument('--conv_layers', type=int, nargs='+', default=[32, 64, 96],
+                    help="List of filter sizes for the convolutional layers in the drug graph channel (default: [32, 64, 96]).")
 parser.add_argument('--kernel_size', type=int, default=8,
                     help="Convolution filter kernel size for convolutional models (default: 8)")
+
 parser.add_argument('--description', type=str, default=None,
                     help="Description to add to run and/or group name for logging (default: None).")
 parser.add_argument('--protein_embedding_type', type=str, default=None,
@@ -153,17 +149,18 @@ NUM_WORKERS = 24
 print('Learning rate: ', LR)
 print('Epochs: ', NUM_EPOCHS)
 
-group_name = f"{args.model}_{args.dataset}_{args.num_layers}_layers_{args.kernel_size}_kernel"
-run_name = f"{args.model}_{args.dataset}_{args.num_layers}_layers_{args.kernel_size}_kernel"
+group_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv{args.conv_layers}_kernel_{args.kernel_size}"
+run_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv{args.conv_layers}_kernel_{args.kernel_size}"
 if args.description is not None:
-    run_name += f"_{args.description}"
-    group_name += f"_{args.description}"
+    run_name += f"_desc_{args.description}"
+    group_name += f"_desc_{args.description}"
 if args.seed is not None:
     run_name += f"_seed_{args.seed}"
+    group_name += f"_seed_{args.seed}"
 run_name += f"_fold_{args.validation_fold}"
 
 if args.wandb:
-    wandb.init(project = 'E-GraphDTA - Validation', config = args, group = group_name, name = run_name )
+    wandb.init(project = 'E-GraphDTA - Validation', config = args, group = group_name, name = run_name)
     
 # Main program: Train on specified dataset 
 if __name__ == "__main__":
@@ -187,7 +184,7 @@ if __name__ == "__main__":
 
     # training the model
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
-    model = modeling(num_layers=args.num_layers, kernel_size=args.kernel_size).to(device)
+    model = modeling(plm_layers = args.plm_layers, conv_layers = args.conv_layers, kernel_size = args.kernel_size).to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
@@ -225,16 +222,6 @@ if __name__ == "__main__":
     tqdm.write(f"Spearman: {val_ret[3]}")
     tqdm.write(f"CI: {val_ret[4]}\n")
 
-#     G,P = predicting(model, device, test_loader)
-#     test_ret = [rmse(G,P),mse(G,P),pearson(G,P),spearman(G,P),ci(G,P)]
-
-#     tqdm.write('\nResults on test set:')
-#     tqdm.write(f"RMSE: {test_ret[0]}")
-#     tqdm.write(f"MSE: {test_ret[1]}")
-#     tqdm.write(f"Pearson: {test_ret[2]}")
-#     tqdm.write(f"Spearman: {test_ret[3]}")
-#     tqdm.write(f"CI: {test_ret[4]}")
-
     if args.wandb:
         wandb.log({
             "val_rmse": val_ret[0],
@@ -242,21 +229,13 @@ if __name__ == "__main__":
             "val_pearson": val_ret[2],
             "val_spearman": val_ret[3],
             "val_ci": val_ret[4]            
-#             "test_rmse": test_ret[0],
-#             "test_mse": test_ret[1],
-#             "test_pearson": test_ret[2],
-#             "test_spearman": test_ret[3],
-#             "test_ci": test_ret[4]
         })
         wandb.finish()
 
     with open(result_file_name, 'w') as f:
         # write header
-        # f.write("test_rmse,test_mse,test_pearson,test_spearman,test_ci,val_rmse,val_mse,val_pearson,val_spearman,val_ci\n")
         f.write("val_rmse,val_mse,val_pearson,val_spearman,val_ci\n")
         # write values
-        # f.write(','.join(map(str, test_ret)))
-        # f.write(',')
         f.write(','.join(map(str, val_ret)))
         f.write('\n')
     

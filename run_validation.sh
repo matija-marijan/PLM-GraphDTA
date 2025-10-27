@@ -80,7 +80,7 @@ launch_job() {
         case "${args[i]}" in
             --model) mdl="${args[i+1]}";;
             --dataset) dset="${args[i+1]}";;
-            --validation_fold|-vf) fold="${args[i+1]}";;
+            --validation_fold) fold="${args[i+1]}";;
         esac
     done
     local logfile="logs/${mdl:-job}_${dset:-dataset}_fold_${fold:-unk}_$$.log"
@@ -139,6 +139,7 @@ kernels=(512)
 num_layers=(1 3)
 datasets=("davis" "kiba")
 validation_folds=(0 1 2 3 4)
+protein_embedding_type="esm_320"
 
 for model in "${models[@]}"; do
     for dataset in "${datasets[@]}"; do
@@ -153,7 +154,8 @@ for model in "${models[@]}"; do
                         --num_layers "$layer" \
                         --kernel_size "$kernel" \
                         --validation_fold "$fold" \
-                        --description "esmc_960"
+                        --description "esmc_960" \
+                        --protein_embedding_type "$protein_embedding_type"
                 done
             done
         done
