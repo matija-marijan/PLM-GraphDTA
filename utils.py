@@ -15,14 +15,14 @@ import pickle
 from collections import OrderedDict
 
 class DTADataset(InMemoryDataset):
-    def __init__(self, root: str = 'data', dataset: str = 'davis', target_type: str = None, mutation: bool = False): #, cluster_type: str = None):
+    def __init__(self, root: str = 'data', dataset: str = 'davis', target_type: str = None): #, mutation: bool = False): #, cluster_type: str = None):
 
         self.root = root
         self.dataset = dataset
         # self.cluster_type = cluster_type
 
         self.target_type = target_type
-        self.mutation = mutation
+        # self.mutation = mutation
 
         super().__init__(root, transform=None, pre_transform=None)
 
@@ -46,7 +46,8 @@ class DTADataset(InMemoryDataset):
         processed_file_names = f"{self.dataset}"
         # processed_file_names += f"_{self.cluster_type}" if self.cluster_type else ""
         processed_file_names += f"_{self.target_type}" if self.target_type else ""
-        processed_file_names += f"_mutation.pt" if self.mutation else ".pt"
+        # processed_file_names += f"_mutation.pt" if self.mutation else ".pt"
+        processed_file_names += ".pt"
         return [processed_file_names]
 
     def download(self):
@@ -78,19 +79,19 @@ class DTADataset(InMemoryDataset):
         # Load ligands, proteins, protein encodings, and affinity data
         ligands = json.load(open(fpath + "drugs.json"), object_pairs_hook=OrderedDict)
         affinity = pickle.load(open(fpath + "Y","rb"), encoding='latin1')
-        if self.mutation and self.dataset == 'davis':
-            proteins = json.load(open(fpath + "proteins_mutation.json"), object_pairs_hook=OrderedDict)
-        else:
-            proteins = json.load(open(fpath + "proteins.json"), object_pairs_hook=OrderedDict)
+        # if self.mutation and self.dataset == 'davis':
+            # proteins = json.load(open(fpath + "proteins_mutation.json"), object_pairs_hook=OrderedDict)
+        # else:
+        proteins = json.load(open(fpath + "proteins.json"), object_pairs_hook=OrderedDict)
 
         # Load precomputed protein embeddings
         if self.target_type == 'deepfri' or self.target_type == 'esm':
-            if self.mutation and self.dataset == 'davis':
-                with open(fpath + f"proteins_{self.target_type}_mutation_.json", 'r') as f:
-                    protein_embeddings_file = {entry['protein_key']: entry for entry in json.load(f)}
-            else:
-                with open(fpath + f"proteins_{self.target_type}.json", 'r') as f:
-                    protein_embeddings_file = {entry['protein_key']: entry for entry in json.load(f)}
+            # if self.mutation and self.dataset == 'davis':
+                # with open(fpath + f"proteins_{self.target_type}_mutation_.json", 'r') as f:
+                    # protein_embeddings_file = {entry['protein_key']: entry for entry in json.load(f)}
+            # else:
+            with open(fpath + f"proteins_{self.target_type}.json", 'r') as f:
+                protein_embeddings_file = {entry['protein_key']: entry for entry in json.load(f)}
 
         # Prepare lists of drugs, proteins, and their keys
         drugs = []
@@ -109,7 +110,7 @@ class DTADataset(InMemoryDataset):
                 entry = protein_embeddings_file[t]
                 emb = entry['embedding']
                 protein_encodings.append(emb)
-        if self.dataset == 'davis':
+        if "davis" in self.dataset:
             affinity = [-np.log10(y/1e9) for y in affinity]
         affinity = np.asarray(affinity)
         rows, cols = np.where(np.isnan(affinity)==False)  
