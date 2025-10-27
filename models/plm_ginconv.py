@@ -7,8 +7,8 @@ from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 
 # GINConv model + protein language model representation
 class PLM_GINConvNet(torch.nn.Module):
-    def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
-                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, conv_layers=None, kernel_size=None, plm_layers = [320, 256, 128]):
+    def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25, embed_dim=320,
+                output_dim=128, dropout=0.2, conv_layers=None, kernel_size=None, plm_layers = [256, 192, 128]):
 
         super(PLM_GINConvNet, self).__init__()
 
@@ -39,17 +39,22 @@ class PLM_GINConvNet(torch.nn.Module):
 
         self.fc1_xd = Linear(dim, output_dim)
 
-        # PLM embedding linear layers built dynamically from `layers`
-        # layers[0] is input size (target_embedding dim), layers[-1] is final projection size
+        # PLM embedding linear layers built dynamically
+        # embed_dim is the input size (target_embedding dim)
+        # plm_layers defines successive output sizes; plm_layers[-1] is final projection size
         self.plm_layers = plm_layers
-        if len(self.plm_layers) < 2:
-            raise ValueError("layers must have at least two elements (input and output sizes)")
+        self.embed_dim = embed_dim
+        
+        if len(self.plm_layers) < 1:
+            raise ValueError("plm_layers must have at least one element (first output size)")
 
         self.fc_xt_layers = nn.ModuleList()
         self.bn_xt_layers = nn.ModuleList()
-        for in_dim, out_dim in zip(self.plm_layers[:-1], self.plm_layers[1:]):
-            self.fc_xt_layers.append(nn.Linear(in_dim, out_dim))
+        prev_dim = self.embed_dim
+        for out_dim in self.plm_layers:
+            self.fc_xt_layers.append(nn.Linear(prev_dim, out_dim))
             self.bn_xt_layers.append(nn.BatchNorm1d(out_dim))
+            prev_dim = out_dim
 
         # combined layers
         # Input to fc1 is concatenation of graph (output_dim) and PLM branch (self.plm_layers[-1])

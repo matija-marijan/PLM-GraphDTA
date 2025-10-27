@@ -23,6 +23,7 @@ import random
 from utils import *
 import argparse
 from tqdm import tqdm
+import json
 
 scaler = torch.cuda.amp.GradScaler()
 
@@ -98,7 +99,7 @@ parser.add_argument('--wandb', action='store_true', default=False,
 parser.add_argument('--validation_fold', type=int, default=0,
                     help="Fold index to use for validation when using k-fold cross-validation (default: 0).")
 
-parser.add_argument('--plm_layers', type=int, nargs='+', default=[320, 256, 128],
+parser.add_argument('--plm_layers', type=int, nargs='+', default=[256, 192, 128],
                     help="List of layer sizes for the protein language model embedding branch (default: [320, 256, 128]).")
 parser.add_argument('--conv_layers', type=int, nargs='+', default=[32, 64, 96],
                     help="List of filter sizes for the convolutional layers in the drug graph channel (default: [32, 64, 96]).")
@@ -161,6 +162,15 @@ run_name += f"_fold_{args.validation_fold}"
 
 if args.wandb:
     wandb.init(project = 'E-GraphDTA - Validation', config = args, group = group_name, name = run_name)
+
+if args.protein_embedding_type is not None:
+    protein_emb_path = f"data/{dataset}/proteins_{args.protein_embedding_type}.json"
+    with open(protein_emb_path, "r") as f:
+        protein_emb_data = json.load(f)
+    first_emb = protein_emb_data[0]["embedding"]
+    embed_dim = len(first_emb)
+else:
+    embed_dim = 128  # default embedding dimension if no precomputed embeddings are used
     
 # Main program: Train on specified dataset 
 if __name__ == "__main__":
@@ -184,7 +194,7 @@ if __name__ == "__main__":
 
     # training the model
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
-    model = modeling(plm_layers = args.plm_layers, conv_layers = args.conv_layers, kernel_size = args.kernel_size).to(device)
+    model = modeling(embed_dim = embed_dim, plm_layers = args.plm_layers, conv_layers = args.conv_layers, kernel_size = args.kernel_size).to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 

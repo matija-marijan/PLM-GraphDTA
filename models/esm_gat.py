@@ -36,7 +36,8 @@ class DGLLife_WeightedSumAndMax(nn.Module):
 # Re-implementation of PGraphDTA GAT model with ESM protein representation
 class ESM_GATNet(torch.nn.Module):
     def __init__(self, num_features_xd=78, n_output=1, num_features_xt=25,
-                     n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, num_layers=None, kernel_size=None):
+                    n_filters=32, embed_dim=128, output_dim=128, dropout=0.2,
+                    conv_layers=None, kernel_size=None, plm_layers = None):
         super(ESM_GATNet, self).__init__()
 
         # graph layers

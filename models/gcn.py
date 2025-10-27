@@ -6,7 +6,8 @@ from torch_geometric.nn import GCNConv, global_max_pool as gmp
 
 # GCN based model
 class GCNNet(torch.nn.Module):
-    def __init__(self, n_output=1, n_filters=32, embed_dim=128,num_features_xd=78, num_features_xt=25, output_dim=128, dropout=0.2, num_layers=None, kernel_size=None):
+    def __init__(self, n_output=1, n_filters=32, embed_dim=128,num_features_xd=78, num_features_xt=25, output_dim=128, dropout=0.2, 
+                 conv_layers=None, kernel_size=None, plm_layers = None):
 
         super(GCNNet, self).__init__()
 

@@ -14,8 +14,8 @@ class GlobalMaxPooling1D(nn.Module):
 
 # GINConv model + transposed Conv1D input
 class Vnoc_GINConvNet(torch.nn.Module):
-    def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
-                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, num_layers=3, kernel_size=16):
+    def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25, embed_dim=128, 
+                 output_dim=128, dropout=0.2, conv_layers=[32, 64, 96], kernel_size=16, plm_layers = None):
 
         super(Vnoc_GINConvNet, self).__init__()
 
@@ -49,42 +49,32 @@ class Vnoc_GINConvNet(torch.nn.Module):
         # 1D convolution on protein sequence
         self.embedding_xt = nn.Embedding(num_features_xt + 1, embed_dim)
         
-        self.num_layers = num_layers
-        if self.num_layers not in [1, 2, 3]:
-            raise ValueError("num_layers must be between 1 and 3")
-        
+        self.conv_layers = conv_layers       
         self.kernel_size = kernel_size
         self.stride = 1
+        self.embed_dim = embed_dim
 
-        if self.num_layers == 1:
-            self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt1 = nn.BatchNorm1d(n_filters)
-            self.fc1_xt = nn.Linear(n_filters, output_dim)
-
-        elif self.num_layers == 2:
-            self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt1 = nn.BatchNorm1d(n_filters)
-            self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=2*n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt2 = nn.BatchNorm1d(2*n_filters)
-            self.fc1_xt = nn.Linear(2*n_filters, output_dim)
-
-        elif self.num_layers == 3:
-            self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt1 = nn.BatchNorm1d(n_filters)
-            self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=2*n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt2 = nn.BatchNorm1d(2*n_filters)
-            self.conv_xt_3 = nn.Conv1d(in_channels=2*n_filters, out_channels=3*n_filters, kernel_size=self.kernel_size, stride=self.stride)
-            self.bn_xt3 = nn.BatchNorm1d(3*n_filters)
-            self.fc1_xt = nn.Linear(3*n_filters, output_dim)
-
+        if len(self.conv_layers) < 1:
+            raise ValueError("conv_layers must have at least one element (first output size)")
+        
+        self.conv_xt_layers = nn.ModuleList()
+        self.bn_xt_layers = nn.ModuleList()
+        prev_dim = self.embed_dim
+        for out_dim in self.conv_layers:
+            self.conv_xt_layers.append(nn.Conv1d(in_channels=prev_dim, out_channels=out_dim, kernel_size=self.kernel_size, stride=self.stride))
+            self.bn_xt_layers.append(nn.BatchNorm1d(out_dim))
+            prev_dim = out_dim
+        
+        self.fc_xt = nn.Linear(self.conv_layers[-1], output_dim)
         self.gmp_xt = GlobalMaxPooling1D()
-        # self.fc1_xt = nn.Linear(n_filters, output_dim)
-        self.bn_fc1 = nn.BatchNorm1d(output_dim)
+        self.bn_fc = nn.BatchNorm1d(output_dim)
 
         # combined layers
         self.fc1 = nn.Linear(256, 1024)
         self.fc2 = nn.Linear(1024, 256)
         self.out = nn.Linear(256, self.n_output)        # n_output = 1 for regression task
+
+        print(self)
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
@@ -107,41 +97,20 @@ class Vnoc_GINConvNet(torch.nn.Module):
         embedded_xt = self.embedding_xt(target)
         embedded_xt = torch.permute(embedded_xt, (0, 2, 1))
 
-        if self.num_layers == 1:
-            conv_xt = self.conv_xt_1(embedded_xt)
-            conv_xt = self.bn_xt1(conv_xt)
-            conv_xt = self.relu(conv_xt)
+        xt = embedded_xt
+        for conv, bn in zip(self.conv_xt_layers, self.bn_xt_layers):
+            xt = conv(xt)
+            xt = bn(xt)
+            xt = self.relu(xt)
 
-        elif self.num_layers == 2:
-            conv_xt = self.conv_xt_1(embedded_xt)
-            conv_xt = self.bn_xt1(conv_xt)
-            conv_xt = self.relu(conv_xt)
-
-            conv_xt = self.conv_xt_2(conv_xt)
-            conv_xt = self.bn_xt2(conv_xt)
-            conv_xt = self.relu(conv_xt)
-
-        elif self.num_layers == 3:
-            conv_xt = self.conv_xt_1(embedded_xt)
-            conv_xt = self.bn_xt1(conv_xt)
-            conv_xt = self.relu(conv_xt)
-
-            conv_xt = self.conv_xt_2(conv_xt)
-            conv_xt = self.bn_xt2(conv_xt)
-            conv_xt = self.relu(conv_xt)
-
-            conv_xt = self.conv_xt_3(conv_xt)
-            conv_xt = self.bn_xt3(conv_xt)
-            conv_xt = self.relu(conv_xt)
-
-        xt = self.gmp_xt(conv_xt)
+        xt = self.gmp_xt(xt)
 
         # flatten
         # xt = xt.view(-1, 96 * 811)
 
         # linear
-        xt = self.fc1_xt(xt)
-        xt = self.bn_fc1(xt)
+        xt = self.fc_xt(xt)
+        xt = self.bn_fc(xt)
         xt = self.relu(xt)
 
         # concat

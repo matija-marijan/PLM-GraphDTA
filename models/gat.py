@@ -8,7 +8,8 @@ from torch_geometric.nn import global_max_pool as gmp
 # GAT  model
 class GATNet(torch.nn.Module):
     def __init__(self, num_features_xd=78, n_output=1, num_features_xt=25,
-                     n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, num_layers=None, kernel_size=None):
+                     n_filters=32, embed_dim=128, output_dim=128, dropout=0.2,
+                     conv_layers=None, kernel_size=None, plm_layers = None):
         super(GATNet, self).__init__()
 
         # graph layers
