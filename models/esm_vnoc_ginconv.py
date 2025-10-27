@@ -13,11 +13,11 @@ class GlobalMaxPooling1D(nn.Module):
         return torch.max(x, dim = -1)[0]
 
 # GINConv model + transposed Conv1D input
-class Vnoc_GINConvNet(torch.nn.Module):
+class ESM_Vnoc_GINConvNet(torch.nn.Module):
     def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
-                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, num_layers=3, kernel_size=16):
+                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, num_layers = None, num_conv_layers=3, num_llm_layers=3, kernel_size=16):
 
-        super(Vnoc_GINConvNet, self).__init__()
+        super(ESM_Vnoc_GINConvNet, self).__init__()
 
         dim = 32
         self.dropout = nn.Dropout(dropout)
@@ -49,26 +49,26 @@ class Vnoc_GINConvNet(torch.nn.Module):
         # 1D convolution on protein sequence
         self.embedding_xt = nn.Embedding(num_features_xt + 1, embed_dim)
         
-        self.num_layers = num_layers
-        if self.num_layers not in [1, 2, 3]:
-            raise ValueError("num_layers must be between 1 and 3")
-        
+        self.num_conv_layers = num_conv_layers
+        if self.num_conv_layers not in [1, 2, 3]:
+            raise ValueError("num_conv_layers must be between 1 and 3")
+
         self.kernel_size = kernel_size
         self.stride = 1
 
-        if self.num_layers == 1:
+        if self.num_conv_layers == 1:
             self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xt1 = nn.BatchNorm1d(n_filters)
             self.fc1_xt = nn.Linear(n_filters, output_dim)
 
-        elif self.num_layers == 2:
+        elif self.num_conv_layers == 2:
             self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xt1 = nn.BatchNorm1d(n_filters)
             self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=2*n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xt2 = nn.BatchNorm1d(2*n_filters)
             self.fc1_xt = nn.Linear(2*n_filters, output_dim)
 
-        elif self.num_layers == 3:
+        elif self.num_conv_layers == 3:
             self.conv_xt_1 = nn.Conv1d(in_channels=embed_dim, out_channels=n_filters, kernel_size=self.kernel_size, stride=self.stride)
             self.bn_xt1 = nn.BatchNorm1d(n_filters)
             self.conv_xt_2 = nn.Conv1d(in_channels=n_filters, out_channels=2*n_filters, kernel_size=self.kernel_size, stride=self.stride)
@@ -77,9 +77,34 @@ class Vnoc_GINConvNet(torch.nn.Module):
             self.bn_xt3 = nn.BatchNorm1d(3*n_filters)
             self.fc1_xt = nn.Linear(3*n_filters, output_dim)
 
+        # ESM protein embedding linear layer
+        self.num_llm_layers = num_llm_layers
+        if self.num_llm_layers not in [1, 2, 3]:
+            raise ValueError("num_llm_layers must be between 1 and 3")
+
+        if self.num_llm_layers == 1:
+            self.fc_xt = nn.Linear(320, 128)
+            self.bn_xt = nn.BatchNorm1d(128)
+
+        elif self.num_llm_layers == 2:
+            self.fc_xt = nn.Linear(320, 192)
+            self.fc_xt2 = nn.Linear(192, 128)
+            self.bn_xt = nn.BatchNorm1d(192)
+            self.bn_xt2 = nn.BatchNorm1d(128)
+
+        elif self.num_llm_layers == 3:
+            self.fc_xt = nn.Linear(320, 256)
+            self.fc_xt2 = nn.Linear(256, 192)
+            self.fc_xt3 = nn.Linear(192, 128)
+            self.bn_xt = nn.BatchNorm1d(256)
+            self.bn_xt2 = nn.BatchNorm1d(192)
+            self.bn_xt3 = nn.BatchNorm1d(128)
+
         self.gmp_xt = GlobalMaxPooling1D()
         # self.fc1_xt = nn.Linear(n_filters, output_dim)
         self.bn_fc1 = nn.BatchNorm1d(output_dim)
+
+        self.final_xt = nn.Linear(256, 128)
 
         # combined layers
         self.fc1 = nn.Linear(256, 1024)
@@ -88,7 +113,8 @@ class Vnoc_GINConvNet(torch.nn.Module):
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
-        target = data.target_encoding
+        target_encoding = data.target_encoding
+        target_embedding = data.target_embedding
 
         x = F.relu(self.conv1(x, edge_index))
         x = self.bn1(x)
@@ -104,15 +130,16 @@ class Vnoc_GINConvNet(torch.nn.Module):
         x = F.relu(self.fc1_xd(x))
         x = F.dropout(x, p=0.2, training=self.training)
 
-        embedded_xt = self.embedding_xt(target)
+        # print(target)
+        embedded_xt = self.embedding_xt(target_encoding)
         embedded_xt = torch.permute(embedded_xt, (0, 2, 1))
 
-        if self.num_layers == 1:
+        if self.num_conv_layers == 1:
             conv_xt = self.conv_xt_1(embedded_xt)
             conv_xt = self.bn_xt1(conv_xt)
             conv_xt = self.relu(conv_xt)
 
-        elif self.num_layers == 2:
+        elif self.num_conv_layers == 2:
             conv_xt = self.conv_xt_1(embedded_xt)
             conv_xt = self.bn_xt1(conv_xt)
             conv_xt = self.relu(conv_xt)
@@ -121,7 +148,7 @@ class Vnoc_GINConvNet(torch.nn.Module):
             conv_xt = self.bn_xt2(conv_xt)
             conv_xt = self.relu(conv_xt)
 
-        elif self.num_layers == 3:
+        elif self.num_conv_layers == 3:
             conv_xt = self.conv_xt_1(embedded_xt)
             conv_xt = self.bn_xt1(conv_xt)
             conv_xt = self.relu(conv_xt)
@@ -136,13 +163,39 @@ class Vnoc_GINConvNet(torch.nn.Module):
 
         xt = self.gmp_xt(conv_xt)
 
-        # flatten
-        # xt = xt.view(-1, 96 * 811)
-
-        # linear
+        # project conv path to output_dim so shapes match before fusion
         xt = self.fc1_xt(xt)
         xt = self.bn_fc1(xt)
         xt = self.relu(xt)
+
+        # ESM Protein embedding linear layer learning
+        if self.num_llm_layers == 1:
+            xt_llm = self.fc_xt(target_embedding)
+            xt_llm = self.bn_xt(xt_llm)
+            xt_llm = self.relu(xt_llm)
+
+        elif self.num_llm_layers == 2:
+            xt_llm = self.fc_xt(target_embedding)
+            xt_llm = self.bn_xt(xt_llm)
+            xt_llm = self.relu(xt_llm)
+            xt_llm = self.fc_xt2(xt_llm)
+            xt_llm = self.bn_xt2(xt_llm)
+            xt_llm = self.relu(xt_llm)
+
+        elif self.num_llm_layers == 3:
+            xt_llm = self.fc_xt(target_embedding)
+            xt_llm = self.bn_xt(xt_llm)
+            xt_llm = self.relu(xt_llm)
+            xt_llm = self.fc_xt2(xt_llm)
+            xt_llm = self.bn_xt2(xt_llm)
+            xt_llm = self.relu(xt_llm)
+            xt_llm = self.fc_xt3(xt_llm)
+            xt_llm = self.bn_xt3(xt_llm)
+            xt_llm = self.relu(xt_llm)
+
+        xt = torch.cat((xt, xt_llm), dim=1)
+
+        xt = self.final_xt(xt)
 
         # concat
         xc = torch.cat((x, xt), 1)

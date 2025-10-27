@@ -34,7 +34,7 @@ class GCNNet(torch.nn.Module):
         # get graph input
         x, edge_index, batch = data.x, data.edge_index, data.batch
         # get protein input
-        target = data.target
+        target = data.target_encoding
 
         x = self.conv1(x, edge_index)
         x = self.relu(x)

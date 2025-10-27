@@ -44,7 +44,7 @@ class GATNet(torch.nn.Module):
         x = self.relu(x)
 
         # protein input feed-forward:
-        target = data.target
+        target = data.target_encoding
         embedded_xt = self.embedding_xt(target)
         conv_xt = self.conv_xt1(embedded_xt)
         conv_xt = self.relu(conv_xt)

@@ -63,7 +63,7 @@ class ESM_GATNet(torch.nn.Module):
     def forward(self, data):
         # graph input feed-forward
         x, edge_index, batch = data.x, data.edge_index, data.batch
-        target = data.target
+        target = data.target_embedding
 
         x = F.dropout(x, p=0.2, training=self.training)
         x = F.elu(self.gcn1(x, edge_index))

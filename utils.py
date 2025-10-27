@@ -15,14 +15,11 @@ import pickle
 from collections import OrderedDict
 
 class DTADataset(InMemoryDataset):
-    def __init__(self, root: str = 'data', dataset: str = 'davis', target_type: str = None): #, mutation: bool = False): #, cluster_type: str = None):
+    def __init__(self, root: str = 'data', dataset: str = 'davis', protein_embedding_type: str = None): #, target_type: str = None): #, mutation: bool = False): #, cluster_type: str = None):
 
         self.root = root
         self.dataset = dataset
-        # self.cluster_type = cluster_type
-
-        self.target_type = target_type
-        # self.mutation = mutation
+        self.protein_embedding_type = protein_embedding_type
 
         super().__init__(root, transform=None, pre_transform=None)
 
@@ -44,8 +41,9 @@ class DTADataset(InMemoryDataset):
     @property
     def processed_file_names(self):
         processed_file_names = f"{self.dataset}"
+        processed_file_names += f"_{self.protein_embedding_type}" if self.protein_embedding_type else ""
         # processed_file_names += f"_{self.cluster_type}" if self.cluster_type else ""
-        processed_file_names += f"_{self.target_type}" if self.target_type else ""
+        # processed_file_names += f"_{self.target_type}" if self.target_type else ""
         # processed_file_names += f"_mutation.pt" if self.mutation else ".pt"
         processed_file_names += ".pt"
         return [processed_file_names]
@@ -84,21 +82,20 @@ class DTADataset(InMemoryDataset):
         # else:
         proteins = json.load(open(fpath + "proteins.json"), object_pairs_hook=OrderedDict)
 
-        # Load precomputed protein embeddings
-        if self.target_type == 'deepfri' or self.target_type == 'esm':
-            # if self.mutation and self.dataset == 'davis':
-                # with open(fpath + f"proteins_{self.target_type}_mutation_.json", 'r') as f:
-                    # protein_embeddings_file = {entry['protein_key']: entry for entry in json.load(f)}
-            # else:
-            with open(fpath + f"proteins_{self.target_type}.json", 'r') as f:
+        protein_embeddings_file = None
+        if self.protein_embedding_type is not None:
+            with open(fpath + 'proteins_' + self.protein_embedding_type + '.json', 'r') as f:
                 protein_embeddings_file = {entry['protein_key']: entry for entry in json.load(f)}
+
+        if protein_embeddings_file is not None:
+            print(f"Loaded precomputed protein embeddings from {fpath + 'proteins_' + self.protein_embedding_type + '.json'}")
 
         # Prepare lists of drugs, proteins, and their keys
         drugs = []
         prots = []
         ligand_keys = []
         protein_keys = []
-        protein_encodings = []
+        protein_embeddings = []
         for d in ligands.keys():
             lg = Chem.MolToSmiles(Chem.MolFromSmiles(ligands[d]),isomericSmiles=True)
             drugs.append(lg)
@@ -106,10 +103,10 @@ class DTADataset(InMemoryDataset):
         for t in proteins.keys():
             prots.append(proteins[t])
             protein_keys.append(t)
-            if self.target_type == 'deepfri' or self.target_type == 'esm':
+            if protein_embeddings_file is not None:
                 entry = protein_embeddings_file[t]
                 emb = entry['embedding']
-                protein_encodings.append(emb)
+                protein_embeddings.append(emb)
         if "davis" in self.dataset:
             affinity = [-np.log10(y/1e9) for y in affinity]
         affinity = np.asarray(affinity)
@@ -124,38 +121,38 @@ class DTADataset(InMemoryDataset):
             drug_key = ligand_keys[rows[pair_ind]]
             aff = affinity[rows[pair_ind], cols[pair_ind]]
             fold = index_to_fold.get(pair_ind, 'none')
-            if self.target_type == 'deepfri' or self.target_type == 'esm':
-                prot_encoding = protein_encodings[cols[pair_ind]]
-                affinity_rows.append({
-                    'target_sequence': prot,
-                    'compound_iso_smiles': drug,
-                    'affinity': aff,
-                    'drug_key': drug_key,
-                    'protein_key': prot_key,
-                    'protein_encoding': prot_encoding,
-                    'fold': fold
-                })
-            else:
-                affinity_rows.append({
+            
+            row = {
                     'target_sequence': prot,
                     'compound_iso_smiles': drug,
                     'affinity': aff,
                     'drug_key': drug_key,
                     'protein_key': prot_key,
                     'fold': fold
-                })
+            }
+
+            if protein_embeddings:
+                prot_embedding = protein_embeddings[cols[pair_ind]]
+                row['protein_embedding'] = prot_embedding
+
+            affinity_rows.append(row)
+
         dataset = pd.DataFrame(affinity_rows)
+        # print(dataset.head())
+        # print(dataset['protein_embedding'][0].shape)
+        # exit()
         
         drug_smiles = dataset['compound_iso_smiles'].values
         target_sequences = dataset['target_sequence'].values
         affinities = dataset['affinity'].values
         folds = dataset['fold'].values
-        if self.target_type == 'deepfri' or self.target_type == 'esm':
-            target_encodings = np.array(dataset['protein_encoding'])
-        elif self.target_type is None:
-            target_encodings = np.asarray([seq_cat(t) for t in target_sequences])
-        else:   
-            raise ValueError(f"Unknown target_type: {self.target_type}. Supported types are 'esm', 'deepfri', or None.")
+
+        target_encodings = np.asarray([seq_cat(t) for t in target_sequences])
+
+        target_embeddings = []
+        if protein_embeddings:
+            target_embeddings = [np.array(emb) for emb in dataset['protein_embedding']]
+        
         # cluster_labels = dataset['cluster_number'].values if self.cluster_type else None
 
         # Convert SMILES to graph data
@@ -164,14 +161,18 @@ class DTADataset(InMemoryDataset):
         for smile in smiles_set:
             graph_list[smile] = smile_to_graph(smile)
 
-        assert (len(drug_smiles) == len(target_encodings) and len(target_encodings) == len(affinities)), \
-            "The three lists must be the same length!"
+        assert len(drug_smiles) == len(target_encodings) == len(affinities), \
+            "drug_smiles, target_encodings and affinities must have the same length!"
+        if len(target_embeddings) != 0:
+            assert len(target_embeddings) == len(target_encodings), \
+            "target_embeddings must have the same length as target_encodings!"
 
         # Create PyTorch-Geometric data objects
         data_len = len(target_sequences)
         for i in tqdm(range(data_len), desc=f"Processing {self.dataset} data"):
             smiles = drug_smiles[i]
-            target = target_encodings[i]
+            target_encoding = target_encodings[i]
+            target_embedding = target_embeddings[i] if target_embeddings else None
             labels = affinities[i]
             c_size, features, edge_index = graph_list[smiles]
             fold = folds[i]
@@ -182,10 +183,12 @@ class DTADataset(InMemoryDataset):
                                 edge_index=torch.LongTensor(edge_index).transpose(1, 0),
                                 y=torch.FloatTensor([labels]))
             
-            GCNData.target = torch.FloatTensor([target]) \
-                if (self.target_type == 'esm' or self.target_type == 'deepfri') \
-                else torch.LongTensor(np.array([target]))
-            
+            # GCNData.target = torch.FloatTensor([target]) \
+            #     if (self.target_type == 'esm' or self.target_type == 'deepfri') \
+            #     else torch.LongTensor(np.array([target]))
+            GCNData.target_encoding = torch.LongTensor(target_encoding).unsqueeze(0)
+            if target_embedding is not None:
+                GCNData.target_embedding = torch.FloatTensor(target_embedding).unsqueeze(0)
             GCNData.__setitem__('c_size', torch.LongTensor([c_size]))
             GCNData.__setitem__('fold', torch.LongTensor([fold]))
             # GCNData.__setitem__('cluster_number', torch.LongTensor([cluster_number]))

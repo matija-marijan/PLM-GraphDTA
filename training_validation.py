@@ -111,18 +111,13 @@ parser.add_argument('--kernel_size', type=int, default=8,
                     help="Convolution filter kernel size for convolutional models (default: 8)")
 parser.add_argument('--description', type=str, default=None,
                     help="Description to add to run and/or group name for logging (default: None).")
+parser.add_argument('--protein_embedding_type', type=str, default=None,
+                    help="Type of precomputed protein embeddings (default: None).")
 
 args = parser.parse_args()
 
 modeling = all_models[args.model]
 model_st = modeling.__name__
-
-if model_st in ["ESM_GINConvNet", "ESM_GATNet"]:
-    target_type = 'esm'
-elif model_st == "FRI_GINConvNet":
-    target_type = 'deepfri'
-else:
-    target_type = None
 
 dataset = args.dataset
 # split_type = args.split_type
@@ -173,8 +168,7 @@ if args.wandb:
 # Main program: Train on specified dataset 
 if __name__ == "__main__":
     print('Training ' + model_st + ' on ' + dataset + ' dataset...')
-    # dta_dataset = DTADataset(root='data', dataset=dataset, target_type=target_type, mutation=args.mutation)
-    dta_dataset = DTADataset(root='data', dataset=dataset, target_type=target_type)
+    dta_dataset = DTADataset(root='data', dataset=dataset, protein_embedding_type=args.protein_embedding_type)
 
     # original k-fold split (hard coded!)
     all_folds = [0, 1, 2, 3, 4]
