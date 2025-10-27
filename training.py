@@ -20,24 +20,20 @@ import random
 from utils import *
 import argparse
 from tqdm import tqdm
+import json
 
 # training function at each epoch
 def train(model, device, train_loader, optimizer, epoch, wandb_log=False):
     # print('Training on {} samples...'.format(len(train_loader.dataset)))
     model.train()
-    for batch_idx, data in tqdm(enumerate(train_loader), total=len(train_loader), leave=False, desc=f"Epoch {epoch}"):
+    # for batch_idx, data in tqdm(enumerate(train_loader), total=len(train_loader), leave=False, desc=f"Epoch {epoch}"):
+    for batch_idx, data in enumerate(train_loader):
         data = data.to(device)
         optimizer.zero_grad()
         output = model(data)
         loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
         loss.backward()
         optimizer.step()
-        # if batch_idx % LOG_INTERVAL == 0:
-            # print('Train epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(epoch,
-            #                                                                batch_idx * len(data.x),
-            #                                                                len(train_loader.dataset),
-            #                                                                100. * batch_idx / len(train_loader),
-            #                                                                loss.item()))
     tqdm.write('Train loss: {:.6f}'.format(loss.item()))
     if wandb_log:
         wandb.log({"loss": loss.item()})
@@ -49,14 +45,15 @@ def predicting(model, device, loader):
     total_labels = torch.Tensor()
     # print('Make prediction for {} samples...'.format(len(loader.dataset)))
     with torch.no_grad():
-        for data in tqdm(loader, total=len(loader), leave=False, desc="Predicting"):
+        # for data in tqdm(loader, total=len(loader), leave=False, desc="Predicting"):
+        for data in loader:
             data = data.to(device)
             output = model(data)
             total_preds = torch.cat((total_preds, output.cpu()), 0)
             total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)
     return total_labels.numpy().flatten(),total_preds.numpy().flatten()
 
-datasets = ['davis', 'kiba']
+datasets = ['davis', 'kiba', 'davis_mutation']
 
 all_models = {
     'GINConvNet': GINConvNet, 
@@ -76,27 +73,30 @@ parser.add_argument('--dataset', type=str, choices=datasets, required=True,
                     help="Dataset name: 'davis' or 'kiba'.")
 parser.add_argument('--model', type=str, choices=list(all_models.keys()), required=True, 
                     help="Model name. Choose from: " + ", ".join(all_models.keys()) + ".")
+
 parser.add_argument('--cuda', type=int, default=0, 
                     help="CUDA device index (default: 0).")
 parser.add_argument('--seed', type=int, default=None, 
                     help="Random seed for reproducibility (default: None).")
 parser.add_argument('--wandb', action='store_true', default=False,
                     help="Flag for using wandb logging (default: False).")
-parser.add_argument('--mutation', action='store_true', default=False,
-                    help="Flag for including protein sequence mutations for the Davis dataset (default: False).")
-parser.add_argument('--num_layers', type=int, default=3,
-                    help="Number of layers in the protein learning channel (default: 3).")
+
+parser.add_argument('--plm_layers', type=int, nargs='+', default=[256, 192, 128],
+                    help="List of layer sizes for the protein language model embedding branch (default: [320, 256, 128]).")
+parser.add_argument('--conv_layers', type=int, nargs='+', default=[32, 64, 96],
+                    help="List of filter sizes for the convolutional layers in the drug graph channel (default: [32, 64, 96]).")
+parser.add_argument('--kernel_size', type=int, default=8,
+                    help="Convolution filter kernel size for convolutional models (default: 8)")
+
+parser.add_argument('--description', type=str, default=None,
+                    help="Description to add to run and/or group name for logging (default: None).")
+parser.add_argument('--protein_embedding_type', type=str, default=None,
+                    help="Type of precomputed protein embeddings (default: None).")
+
 args = parser.parse_args()
 
 modeling = all_models[args.model]
 model_st = modeling.__name__
-
-if model_st in ["ESM_GINConvNet", "ESM_GATNet"]:
-    target_type = 'esm'
-elif model_st == "FRI_GINConvNet":
-    target_type = 'deepfri'
-else:
-    target_type = None
 
 dataset = args.dataset
 # split_type = args.split_type
@@ -126,27 +126,38 @@ TRAIN_BATCH_SIZE = 512
 TEST_BATCH_SIZE = 512
 LR = 0.0005
 LOG_INTERVAL = 20
-NUM_EPOCHS = 1000
+NUM_EPOCHS = 5
+NUM_WORKERS = 24
 
 print('Learning rate: ', LR)
 print('Epochs: ', NUM_EPOCHS)
 
-group_name = f"{args.model}_{args.dataset}_{args.num_layers}_layers"
-run_name = f"{args.model}_{args.dataset}_{args.num_layers}_layers"
-if args.mutation:
-    group_name += "_mutation"
-    run_name += "_mutation"
+group_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv_{args.conv_layers}_kernel_{args.kernel_size}"
+run_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv_{args.conv_layers}_kernel_{args.kernel_size}"
+if args.description is not None:
+    run_name += f"_desc_{args.description}"
+    group_name += f"_desc_{args.description}"
 if args.seed is not None:
     run_name += f"_seed_{args.seed}"
+    group_name += f"_seed_{args.seed}"
 run_name += f"_testing"
 
 if args.wandb:
-    wandb.init(project = 'E-GraphDTA - Testing', config = args, group = group_name, name = run_name )
+    wandb.init(project = 'E-GraphDTA - Testing', config = args, group = group_name, name = run_name)
+
+if args.protein_embedding_type is not None:
+    protein_emb_path = f"data/{dataset}/proteins_{args.protein_embedding_type}.json"
+    with open(protein_emb_path, "r") as f:
+        protein_emb_data = json.load(f)
+    first_emb = protein_emb_data[0]["embedding"]
+    embed_dim = len(first_emb)
+else:
+    embed_dim = 128  # default embedding dimension if no precomputed embeddings are used
     
 # Main program: Train on specified dataset 
 if __name__ == "__main__":
     print('Training ' + model_st + ' on ' + dataset + ' dataset...')
-    dta_dataset = DTADataset(root='data', dataset=dataset, target_type=target_type, mutation=args.mutation)
+    dta_dataset = DTADataset(root='data', dataset=dataset, protein_embedding_type=args.protein_embedding_type)
 
     # Train on all data except the test set (fold == -1)
     train_folds = [0, 1, 2, 3, 4]
@@ -156,35 +167,35 @@ if __name__ == "__main__":
     test_dataset = dta_dataset[dta_dataset._data.fold == -1]
 
     # make data PyTorch mini-batch processing ready
-    train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE, shuffle=False)
-
+    train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, shuffle=True, pin_memory = True, num_workers = NUM_WORKERS)
+    test_loader = DataLoader(test_dataset, batch_size=TEST_BATCH_SIZE, shuffle=False, pin_memory = True, num_workers = NUM_WORKERS//2)
+    
     # training the model
     device = torch.device(cuda_name if torch.cuda.is_available() else "cpu")
-    model = modeling(num_layers=args.num_layers).to(device)
+    model = modeling(embed_dim = embed_dim, plm_layers = args.plm_layers, conv_layers = args.conv_layers, kernel_size = args.kernel_size).to(device)
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     best_loss = 1000
     best_epoch = -1
 
+    model_file_name = 'trained_models/testing/model_' + run_name + '_testing.pt'
+    result_file_name = 'trained_models/testing/result_' + run_name + '_testing.csv'
+    os.makedirs('trained_models/testing', exist_ok=True)
+
     for epoch in range(NUM_EPOCHS):
         tqdm.write(f'\nEpoch {epoch+1}')
         train_loss = train(model, device, train_loader, optimizer, epoch+1, wandb_log=args.wandb)
 
         if train_loss < best_loss:
-            best_model = model
+            torch.save(model.state_dict(), model_file_name)
             best_epoch = epoch+1
             best_loss = train_loss
         tqdm.write(f'Best loss: {best_loss:.6f} (epoch {best_epoch})')
 
-    model_file_name = 'trained_models/model_' + run_name + '_testing.model'
-    result_file_name = 'trained_models/result_' + run_name + '_testing.csv'
-    os.makedirs('trained_models', exist_ok=True)
+    model.load_state_dict(torch.load(model_file_name))
 
-    torch.save(best_model.state_dict(), model_file_name)
-
-    G,P = predicting(best_model, device, test_loader)
+    G,P = predicting(model, device, test_loader)
     test_ret = [rmse(G,P),mse(G,P),pearson(G,P),spearman(G,P),ci(G,P)]
 
     tqdm.write('\nResults on test set:')
