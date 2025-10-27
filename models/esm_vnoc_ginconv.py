@@ -6,18 +6,18 @@ from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 
 class GlobalMaxPooling1D(nn.Module):
-    def __init(self):
+    def __init__(self):
         super(GlobalMaxPooling1D, self).__init__()
 
     def forward(self, x):
         return torch.max(x, dim = -1)[0]
 
-# GINConv model + transposed Conv1D input
-class ESM_Vnoc_GINConvNet(torch.nn.Module):
+# GINConv model + transposed Conv1D input + PLM embedding
+class PLM_Vnoc_GINConvNet(torch.nn.Module):
     def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
                  n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, num_layers = None, num_conv_layers=3, num_llm_layers=3, kernel_size=16):
 
-        super(ESM_Vnoc_GINConvNet, self).__init__()
+        super(PLM_Vnoc_GINConvNet, self).__init__()
 
         dim = 32
         self.dropout = nn.Dropout(dropout)

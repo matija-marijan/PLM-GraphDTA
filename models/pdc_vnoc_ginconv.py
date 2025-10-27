@@ -6,7 +6,7 @@ from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 
 class GlobalMaxPooling1D(nn.Module):
-    def __init(self):
+    def __init__(self):
         super(GlobalMaxPooling1D, self).__init__()
 
     def forward(self, x):
