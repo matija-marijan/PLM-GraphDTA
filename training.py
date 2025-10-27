@@ -9,11 +9,8 @@ from models.gat_gcn import GAT_GCN
 from models.gcn import GCNNet
 from models.ginconv import GINConvNet
 
-from models.pdc_ginconv import PDC_GINConvNet
 from models.vnoc_ginconv import Vnoc_GINConvNet
-from models.pdc_vnoc_ginconv import PDC_Vnoc_GINConvNet
 from models.plm_ginconv import PLM_GINConvNet
-from models.fri_ginconv import FRI_GINConvNet
 
 from models.esm_gat import ESM_GATNet
 
@@ -64,13 +61,11 @@ all_models = {
     'GINConvNet': GINConvNet, 
     'GATNet': GATNet, 
     'GAT_GCN': GAT_GCN, 
-    'GCNNet': GCNNet, 
-    'PDC_GINConvNet': PDC_GINConvNet, 
-    'Vnoc_GINConvNet': Vnoc_GINConvNet, 
-    'ESM_GINConvNet': ESM_GINConvNet, 
-    'FRI_GINConvNet': FRI_GINConvNet, 
-    'PDC_Vnoc_GINConvNet': PDC_Vnoc_GINConvNet,
-    'ESM_GATNet': ESM_GATNet
+    'GCNNet': GCNNet,
+
+    'ESM_GATNet': ESM_GATNet,
+    'PLM_GINConvNet': PLM_GINConvNet,
+    'Vnoc_GINConvNet': Vnoc_GINConvNet
 }
 
 parser = argparse.ArgumentParser(description="Run a specific model on a specific dataset.")
