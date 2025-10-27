@@ -142,8 +142,8 @@ NUM_WORKERS = 24
 print('Learning rate: ', LR)
 print('Epochs: ', NUM_EPOCHS)
 
-group_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv{args.conv_layers}_kernel_{args.kernel_size}"
-run_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv{args.conv_layers}_kernel_{args.kernel_size}"
+group_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv_{args.conv_layers}_kernel_{args.kernel_size}"
+run_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv_{args.conv_layers}_kernel_{args.kernel_size}"
 if args.description is not None:
     run_name += f"_desc_{args.description}"
     group_name += f"_desc_{args.description}"
@@ -193,9 +193,9 @@ if __name__ == "__main__":
     best_mse = 1000
     best_epoch = -1
     
-    model_file_name = 'trained_models/model_' + run_name + '_validation.pt'
-    result_file_name = 'trained_models/result_' + run_name + '_validation.csv'
-    os.makedirs('trained_models', exist_ok=True)
+    model_file_name = 'trained_models/validation/model_' + run_name + '_validation.pt'
+    result_file_name = 'trained_models/validation/result_' + run_name + '_validation.csv'
+    os.makedirs('trained_models/validation', exist_ok=True)
 
     for epoch in range(NUM_EPOCHS):
         tqdm.write(f'\nEpoch {epoch+1}')
