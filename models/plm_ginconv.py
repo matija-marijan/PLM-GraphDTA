@@ -5,12 +5,12 @@ from torch.nn import Sequential, Linear, ReLU
 from torch_geometric.nn import GINConv, global_add_pool
 from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 
-# GINConv model + DeepFRI protein representation
-class FRI_GINConvNet(torch.nn.Module):
+# GINConv model + protein language model representation
+class PLM_GINConvNet(torch.nn.Module):
     def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
-                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, num_layers=3, kernel_size=None):
+                 n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, conv_layers=None, kernel_size=None, plm_layers = [320, 256, 128]):
 
-        super(FRI_GINConvNet, self).__init__()
+        super(PLM_GINConvNet, self).__init__()
 
         dim = 32
         self.dropout = nn.Dropout(dropout)
@@ -39,32 +39,25 @@ class FRI_GINConvNet(torch.nn.Module):
 
         self.fc1_xd = Linear(dim, output_dim)
 
-        # DeepFRI protein embedding linear layer
-        self.num_layers = num_layers
-        if self.num_layers not in [1, 2, 3]:
-            raise ValueError("num_layers must be between 1 and 3")
-        if self.num_layers == 1:
-            self.fc_xt = nn.Linear(4096, 128)
-            self.bn_xt = nn.BatchNorm1d(128)
+        # PLM embedding linear layers built dynamically from `layers`
+        # layers[0] is input size (target_embedding dim), layers[-1] is final projection size
+        self.plm_layers = plm_layers
+        if len(self.plm_layers) < 2:
+            raise ValueError("layers must have at least two elements (input and output sizes)")
 
-        elif self.num_layers == 2:
-            self.fc_xt = nn.Linear(4096, 512)
-            self.fc_xt2 = nn.Linear(512, 128)
-            self.bn_xt = nn.BatchNorm1d(512)
-            self.bn_xt2 = nn.BatchNorm1d(128)
-
-        elif self.num_layers == 3:
-            self.fc_xt = nn.Linear(4096, 512)
-            self.fc_xt2 = nn.Linear(512, 256)
-            self.fc_xt3 = nn.Linear(256, 128)
-            self.bn_xt = nn.BatchNorm1d(512)
-            self.bn_xt2 = nn.BatchNorm1d(256)
-            self.bn_xt3 = nn.BatchNorm1d(128)
+        self.fc_xt_layers = nn.ModuleList()
+        self.bn_xt_layers = nn.ModuleList()
+        for in_dim, out_dim in zip(self.plm_layers[:-1], self.plm_layers[1:]):
+            self.fc_xt_layers.append(nn.Linear(in_dim, out_dim))
+            self.bn_xt_layers.append(nn.BatchNorm1d(out_dim))
 
         # combined layers
-        self.fc1 = nn.Linear(256, 1024)
+        # Input to fc1 is concatenation of graph (output_dim) and PLM branch (self.plm_layers[-1])
+        self.fc1 = nn.Linear(output_dim + self.plm_layers[-1], 1024)
         self.fc2 = nn.Linear(1024, 256)
         self.out = nn.Linear(256, self.n_output)        # n_output = 1 for regression task
+
+        # print(self)
 
     def forward(self, data):
         x, edge_index, batch = data.x, data.edge_index, data.batch
@@ -84,32 +77,11 @@ class FRI_GINConvNet(torch.nn.Module):
         x = F.relu(self.fc1_xd(x))
         x = F.dropout(x, p=0.2, training=self.training)
 
-        # DeepFRI Protein embedding linear layer learning
-        if self.num_layers == 1:
-            xt = self.fc_xt(target)
-            xt = self.bn_xt(xt)
-            xt = self.relu(xt)
-        
-        elif self.num_layers == 2:
-            xt = self.fc_xt(target)
-            xt = self.bn_xt(xt)
-            xt = self.relu(xt)
-
-            xt = self.fc_xt2(xt)
-            xt = self.bn_xt2(xt)
-            xt = self.relu(xt)
-
-        elif self.num_layers == 3:
-            xt = self.fc_xt(target)
-            xt = self.bn_xt(xt)
-            xt = self.relu(xt)
-
-            xt = self.fc_xt2(xt)
-            xt = self.bn_xt2(xt)
-            xt = self.relu(xt)
-
-            xt = self.fc_xt3(xt)
-            xt = self.bn_xt3(xt)
+        # PLM embedding linear layers
+        xt = target
+        for fc, bn in zip(self.fc_xt_layers, self.bn_xt_layers):
+            xt = fc(xt)
+            xt = bn(xt)
             xt = self.relu(xt)
 
         # concat
