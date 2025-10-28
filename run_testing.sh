@@ -124,12 +124,12 @@ base_common_args=( --wandb )
 # Models configuration
 # ------------------------
 
-models=("PLM_Vnoc_GINConvNet")
+models=("GINConvNet")
 datasets=("davis_mutation" "kiba" "davis")
-protein_embedding_type="esm_320"
-kernels=(8 16 32)
-conv_layers=("32 64 96" "32 32 32")
-plm_layers=("128" "256 192 128")
+# protein_embedding_type="esm_320"
+kernels=(8)
+conv_layers=("32")
+plm_layers=("None")
 seeds=(0 1 2 3 4)
 
 for model in "${models[@]}"; do
@@ -144,12 +144,12 @@ for model in "${models[@]}"; do
                             "${base_common_args[@]}" \
                             --dataset "$dataset" \
                             --model "$model" \
-                            --plm_layers $plm \
                             --conv_layers $conv \
                             --kernel_size "$kernel" \
                             --seed "$seed" \
-                            --description "$protein_embedding_type" \
-                            --protein_embedding_type "$protein_embedding_type"
+                            # --plm_layers $plm \
+                            # --description "$protein_embedding_type" \
+                            # --protein_embedding_type "$protein_embedding_type"
 
                     done
                 done

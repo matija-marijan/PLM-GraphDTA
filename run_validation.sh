@@ -135,11 +135,46 @@ base_common_args=( --seed "$seed" --wandb )
 # mv data/kiba/proteins_deepfri_mf.json data/kiba/proteins_deepfri.json
 
 models=("PLM_Vnoc_GINConvNet")
-datasets=("davis_mutation" "kiba" "davis")
-protein_embedding_type="esm_320"
-kernels=(8 16 32)
-conv_layers=("32 64 96" "32 32 32")
-plm_layers=("128" "256 192 128")
+datasets=("davis_mutation")
+protein_embedding_type="deepfri_ec"
+kernels=(16)
+conv_layers=("32 64 96")
+plm_layers=("128")
+validation_folds=(0 1 2 3 4)
+
+
+for model in "${models[@]}"; do
+    for dataset in "${datasets[@]}"; do
+        for plm in "${plm_layers[@]}"; do
+            for conv in "${conv_layers[@]}"; do
+                for kernel in "${kernels[@]}"; do
+                    for fold in "${validation_folds[@]}"; do
+
+                        gpu=$(choose_free_gpu)
+                        launch_job "$gpu" training_validation.py \
+                            "${base_common_args[@]}" \
+                            --dataset "$dataset" \
+                            --model "$model" \
+                            --plm_layers $plm \
+                            --conv_layers $conv \
+                            --kernel_size "$kernel" \
+                            --validation_fold "$fold" \
+                            --description "$protein_embedding_type" \
+                            --protein_embedding_type "$protein_embedding_type"
+
+                    done
+                done
+            done
+        done
+    done
+done
+
+models=("PLM_Vnoc_GINConvNet")
+datasets=("kiba")
+protein_embedding_type="deepfri_mf"
+kernels=(16)
+conv_layers=("32 64 96")
+plm_layers=("128")
 validation_folds=(0 1 2 3 4)
 
 
