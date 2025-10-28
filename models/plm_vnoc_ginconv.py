@@ -16,7 +16,7 @@ class GlobalMaxPooling1D(nn.Module):
 class PLM_Vnoc_GINConvNet(torch.nn.Module):
     def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25,
                  n_filters=32, embed_dim=128, output_dim=128, dropout=0.2, 
-                 conv_layers=[32, 64, 96], kernel_size=16, plm_layers = [256, 192, 128]):
+                 conv_layers=[32, 64, 96], kernel_size=16, plm_layers = [128]):
 
         super(PLM_Vnoc_GINConvNet, self).__init__()
 
