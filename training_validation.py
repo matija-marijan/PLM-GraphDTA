@@ -28,6 +28,8 @@ scaler = torch.cuda.amp.GradScaler()
 def train(model, device, train_loader, optimizer, epoch, wandb_log=False):
     # print('Training on {} samples...'.format(len(train_loader.dataset)))
     model.train()
+    running_loss = 0.0
+    num_batches = 0
     # for batch_idx, data in tqdm(enumerate(train_loader), total=len(train_loader), leave=False, desc=f"Epoch {epoch}"):
     for batch_idx, data in enumerate(train_loader):
         data = data.to(device, non_blocking=True)
@@ -39,9 +41,14 @@ def train(model, device, train_loader, optimizer, epoch, wandb_log=False):
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
-    tqdm.write('Train loss: {:.6f}'.format(loss.item()))
+
+        running_loss += loss.item()
+        num_batches += 1
+
+    loss_mean = running_loss / num_batches
+    tqdm.write('Train loss: {:.6f}'.format(loss_mean))
     if wandb_log:
-        wandb.log({"loss": loss.item()}, commit=False)
+        wandb.log({"loss": loss_mean}, commit=False)
 
 def predicting(model, device, loader):
     model.eval()
