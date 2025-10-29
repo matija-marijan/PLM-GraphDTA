@@ -22,35 +22,51 @@ import argparse
 from tqdm import tqdm
 import json
 
+scaler = torch.cuda.amp.GradScaler()
+
 # training function at each epoch
 def train(model, device, train_loader, optimizer, epoch, wandb_log=False):
     # print('Training on {} samples...'.format(len(train_loader.dataset)))
     model.train()
+    running_loss = 0.0
+    num_batches = 0
     # for batch_idx, data in tqdm(enumerate(train_loader), total=len(train_loader), leave=False, desc=f"Epoch {epoch}"):
     for batch_idx, data in enumerate(train_loader):
-        data = data.to(device)
+        data = data.to(device, non_blocking=True)
         optimizer.zero_grad()
-        output = model(data)
-        loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
-        loss.backward()
-        optimizer.step()
-    tqdm.write('Train loss: {:.6f}'.format(loss.item()))
+
+        with torch.cuda.amp.autocast():
+            output = model(data)
+            loss = loss_fn(output, data.y.view(-1, 1).float().to(device))
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
+
+        running_loss += loss.item()
+        num_batches += 1
+        
+    loss_mean = running_loss / num_batches
+    tqdm.write('Train loss: {:.6f}'.format(loss_mean))
     if wandb_log:
-        wandb.log({"loss": loss.item()})
-    return loss.item()
+        wandb.log({"loss": loss_mean})
+    return loss_mean
 
 def predicting(model, device, loader):
     model.eval()
-    total_preds = torch.Tensor()
-    total_labels = torch.Tensor()
+    total_preds = []
+    total_labels = []
     # print('Make prediction for {} samples...'.format(len(loader.dataset)))
     with torch.no_grad():
         # for data in tqdm(loader, total=len(loader), leave=False, desc="Predicting"):
         for data in loader:
-            data = data.to(device)
-            output = model(data)
-            total_preds = torch.cat((total_preds, output.cpu()), 0)
-            total_labels = torch.cat((total_labels, data.y.view(-1, 1).cpu()), 0)
+            data = data.to(device, non_blocking=True)
+            with torch.cuda.amp.autocast():
+                output = model(data)
+            total_preds.append(output.cpu())
+            total_labels.append(data.y.view(-1, 1).cpu())
+            
+    total_preds = torch.cat(total_preds, dim=0)
+    total_labels = torch.cat(total_labels, dim=0)
     return total_labels.numpy().flatten(),total_preds.numpy().flatten()
 
 datasets = ['davis', 'kiba', 'davis_mutation']
