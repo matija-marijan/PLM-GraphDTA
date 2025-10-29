@@ -97,10 +97,10 @@ parser.add_argument('--seed', type=int, default=None,
 parser.add_argument('--wandb', action='store_true', default=False,
                     help="Flag for using wandb logging (default: False).")
 
-parser.add_argument('--plm_layers', type=int, nargs='+', default=[256, 192, 128],
-                    help="List of layer sizes for the protein language model embedding branch (default: [320, 256, 128]).")
-parser.add_argument('--conv_layers', type=int, nargs='+', default=[32, 64, 96],
-                    help="List of filter sizes for the convolutional layers in the drug graph channel (default: [32, 64, 96]).")
+parser.add_argument('--plm_layers', type=int, nargs='+', default=None,
+                    help="List of layer sizes for the protein language model embedding branch (default: None).")
+parser.add_argument('--conv_layers', type=int, nargs='+', default=None,
+                    help="List of filter sizes for the convolutional layers in the drug graph channel (default: None).")
 parser.add_argument('--kernel_size', type=int, default=8,
                     help="Convolution filter kernel size for convolutional models (default: 8)")
 
@@ -142,7 +142,7 @@ TRAIN_BATCH_SIZE = 512
 TEST_BATCH_SIZE = 512
 LR = 0.0005
 LOG_INTERVAL = 20
-NUM_EPOCHS = 5
+NUM_EPOCHS = 1000
 NUM_WORKERS = 24
 
 print('Learning rate: ', LR)
@@ -155,7 +155,6 @@ if args.description is not None:
     group_name += f"_desc_{args.description}"
 if args.seed is not None:
     run_name += f"_seed_{args.seed}"
-    group_name += f"_seed_{args.seed}"
 run_name += f"_testing"
 
 if args.wandb:

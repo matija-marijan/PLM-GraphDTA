@@ -98,10 +98,10 @@ parser.add_argument('--wandb', action='store_true', default=False,
 parser.add_argument('--validation_fold', type=int, default=0,
                     help="Fold index to use for validation when using k-fold cross-validation (default: 0).")
 
-parser.add_argument('--plm_layers', type=int, nargs='+', default=[256, 192, 128],
-                    help="List of layer sizes for the protein language model embedding branch (default: [320, 256, 128]).")
-parser.add_argument('--conv_layers', type=int, nargs='+', default=[32, 64, 96],
-                    help="List of filter sizes for the convolutional layers in the drug graph channel (default: [32, 64, 96]).")
+parser.add_argument('--plm_layers', type=int, nargs='+', default=None,
+                    help="List of layer sizes for the protein language model embedding branch (default: None).")
+parser.add_argument('--conv_layers', type=int, nargs='+', default=None,
+                    help="List of filter sizes for the convolutional layers in the drug graph channel (default: None).")
 parser.add_argument('--kernel_size', type=int, default=8,
                     help="Convolution filter kernel size for convolutional models (default: 8)")
 

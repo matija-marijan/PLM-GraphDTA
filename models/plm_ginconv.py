@@ -8,7 +8,7 @@ from torch_geometric.nn import global_mean_pool as gap, global_max_pool as gmp
 # GINConv model + protein language model representation
 class PLM_GINConvNet(torch.nn.Module):
     def __init__(self, n_output=1,num_features_xd=78, num_features_xt=25, embed_dim=320,
-                output_dim=128, dropout=0.2, conv_layers=None, kernel_size=None, plm_layers = [256, 192, 128]):
+                output_dim=128, dropout=0.2, conv_layers=None, kernel_size=None, plm_layers = [128]):
 
         super(PLM_GINConvNet, self).__init__()
 
