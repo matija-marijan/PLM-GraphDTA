@@ -126,8 +126,8 @@ base_common_args=( --wandb )
 
 models=("GINConvNet")
 datasets=("davis_mutation" "kiba" "davis")
-# protein_embedding_type="esm_320"
-kernels=(8)
+# protein_embedding_type="esm_1280"
+kernels=("8")
 conv_layers=("32")
 plm_layers=("None")
 seeds=(0 1 2 3 4)
@@ -144,13 +144,146 @@ for model in "${models[@]}"; do
                             "${base_common_args[@]}" \
                             --dataset "$dataset" \
                             --model "$model" \
-                            --conv_layers $conv \
-                            --kernel_size "$kernel" \
                             --seed "$seed" \
+                            --conv_layers $conv \
+                            --kernel_size "$kernel"
                             # --plm_layers $plm \
                             # --description "$protein_embedding_type" \
-                            # --protein_embedding_type "$protein_embedding_type"
+                            # --protein_embedding_type "$protein_embedding_type" \
+                    done
+                done
+            done
+        done
+    done
+done
 
+models=("ESM_GATNet")
+datasets=("davis_mutation" "kiba" "davis")
+protein_embedding_type="esm_1280"
+kernels=("None")
+conv_layers=("None")
+plm_layers=("256")
+seeds=(0 1 2 3 4)
+
+for model in "${models[@]}"; do
+    for dataset in "${datasets[@]}"; do
+        for plm in "${plm_layers[@]}"; do
+            for conv in "${conv_layers[@]}"; do
+                for kernel in "${kernels[@]}"; do
+                    for seed in "${seeds[@]}"; do
+
+                        gpu=$(choose_free_gpu)
+                        launch_job "$gpu" training.py \
+                            "${base_common_args[@]}" \
+                            --dataset "$dataset" \
+                            --model "$model" \
+                            --seed "$seed" \
+                            --plm_layers $plm \
+                            --description "$protein_embedding_type" \
+                            --protein_embedding_type "$protein_embedding_type" \
+                            # --conv_layers $conv \
+                            # --kernel_size "$kernel" \
+                    done
+                done
+            done
+        done
+    done
+done
+
+models=("PLM_GINConvNet")
+datasets=("davis_mutation" "kiba" "davis")
+protein_embedding_type="esmc_1152"
+kernels=("None")
+conv_layers=("None")
+plm_layers=("128")
+seeds=(0 1 2 3 4)
+
+for model in "${models[@]}"; do
+    for dataset in "${datasets[@]}"; do
+        for plm in "${plm_layers[@]}"; do
+            for conv in "${conv_layers[@]}"; do
+                for kernel in "${kernels[@]}"; do
+                    for seed in "${seeds[@]}"; do
+
+                        gpu=$(choose_free_gpu)
+                        launch_job "$gpu" training.py \
+                            "${base_common_args[@]}" \
+                            --dataset "$dataset" \
+                            --model "$model" \
+                            --seed "$seed" \
+                            --plm_layers $plm \
+                            --description "$protein_embedding_type" \
+                            --protein_embedding_type "$protein_embedding_type" \
+                            # --conv_layers $conv \
+                            # --kernel_size "$kernel" \
+                    done
+                done
+            done
+        done
+    done
+done
+
+models=("PLM_GINConvNet")
+datasets=("davis_mutation" "kiba" "davis")
+protein_embedding_types=("esm_320" "esm_1280" "esmc_960")
+kernels=("None")
+conv_layers=("None")
+plm_layers=("128")
+seeds=(0 1 2 3 4)
+
+for protein_embedding_type in "${protein_embedding_types[@]}"; do
+    for model in "${models[@]}"; do
+        for dataset in "${datasets[@]}"; do
+            for plm in "${plm_layers[@]}"; do
+                for conv in "${conv_layers[@]}"; do
+                    for kernel in "${kernels[@]}"; do
+                        for seed in "${seeds[@]}"; do
+
+                            gpu=$(choose_free_gpu)
+                            launch_job "$gpu" training.py \
+                                "${base_common_args[@]}" \
+                                --dataset "$dataset" \
+                                --model "$model" \
+                                --seed "$seed" \
+                                --plm_layers $plm \
+                                --description "$protein_embedding_type" \
+                                --protein_embedding_type "$protein_embedding_type"
+                                # --conv_layers $conv \
+                                # --kernel_size "$kernel" \
+                        done
+                    done
+                done
+            done
+        done
+    done
+done
+
+models=("Vnoc_GINConvNet")
+datasets=("davis_mutation" "kiba" "davis")
+# protein_embedding_type="esm_1280"
+kernels=("16" "32")
+conv_layers=("32" "32 64 96")
+plm_layers=("None")
+seeds=(0 1 2 3 4)
+
+for model in "${models[@]}"; do
+    for dataset in "${datasets[@]}"; do
+        for plm in "${plm_layers[@]}"; do
+            for conv in "${conv_layers[@]}"; do
+                for kernel in "${kernels[@]}"; do
+                    for seed in "${seeds[@]}"; do
+
+                        gpu=$(choose_free_gpu)
+                        launch_job "$gpu" training.py \
+                            "${base_common_args[@]}" \
+                            --dataset "$dataset" \
+                            --model "$model" \
+                            --seed "$seed" \
+                            --conv_layers $conv \
+                            --kernel_size "$kernel"
+                            # --plm_layers $plm \
+                            # --description "$protein_embedding_type" \
+                            # --protein_embedding_type "$protein_embedding_type" \
                     done
                 done
             done
