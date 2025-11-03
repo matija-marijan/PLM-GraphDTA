@@ -102,7 +102,7 @@ parser.add_argument('--plm_layers', type=int, nargs='+', default=None,
 parser.add_argument('--conv_layers', type=int, nargs='+', default=None,
                     help="List of filter sizes for the convolutional layers in the drug graph channel (default: None).")
 parser.add_argument('--kernel_size', type=int, default=None,
-                    help="Convolution filter kernel size for convolutional models (default: 8)")
+                    help="Convolution filter kernel size for convolutional models (default: None)")
 
 parser.add_argument('--description', type=str, default=None,
                     help="Description to add to run and/or group name for logging (default: None).")
