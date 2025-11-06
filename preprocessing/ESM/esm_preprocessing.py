@@ -11,7 +11,8 @@ import json
 from collections import OrderedDict
 
 # model, alphabet = esm.pretrained.esm2_t6_8M_UR50D()
-model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+# model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+model, alphabet = esm.pretrained.esm2_t30_150M_UR50D()
 final_layer = model.num_layers
 embed_dim = model.embed_dim
 
@@ -22,7 +23,7 @@ batch_converter = alphabet.get_batch_converter()
 datasets = ['davis', 'kiba', 'davis_mutation']
 for dataset in datasets:
     embeddings = []
-    processed_dataset = 'data/' + dataset + '/proteins_esm_' + embed_dim + '.json'
+    processed_dataset = 'data/' + dataset + '/proteins_esm_' + str(embed_dim) + '.json'
 
     if not os.path.isfile(processed_dataset):
         proteins = json.load(open('data/' + dataset + "/proteins.json"), object_pairs_hook=OrderedDict)
