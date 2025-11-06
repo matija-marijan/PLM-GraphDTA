@@ -11,7 +11,6 @@ from models.ginconv import GINConvNet
 
 from models.vnoc_ginconv import Vnoc_GINConvNet
 from models.plm_ginconv import PLM_GINConvNet
-from models.plm_vnoc_ginconv import PLM_Vnoc_GINConvNet
 
 from models.esm_gat import ESM_GATNet
 
@@ -78,8 +77,7 @@ all_models = {
 
     'ESM_GATNet': ESM_GATNet,
     'PLM_GINConvNet': PLM_GINConvNet,
-    'Vnoc_GINConvNet': Vnoc_GINConvNet,
-    'PLM_Vnoc_GINConvNet': PLM_Vnoc_GINConvNet
+    'Vnoc_GINConvNet': Vnoc_GINConvNet
 }
 
 parser = argparse.ArgumentParser(description="Run a specific model on a specific dataset.")
