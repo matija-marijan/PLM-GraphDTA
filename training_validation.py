@@ -110,7 +110,7 @@ parser.add_argument('--kernel_size', type=int, default=None,
 parser.add_argument('--description', type=str, default=None,
                     help="Description to add to run and/or group name for logging (default: None).")
 parser.add_argument('--protein_embedding_type', type=str, default=None,
-                    help="Type of precomputed protein embeddings (default: None).")
+                    help="Type of precomputed protein embeddings (esm_320, esm_640, esm_1280, esmc_960, esmc_1152, deepfri_bp, deepfri_cc, deepfri_ec, deepfri_mf, prost_1024) (default: None).")
 
 args = parser.parse_args()
 
