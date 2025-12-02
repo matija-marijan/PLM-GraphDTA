@@ -7,3 +7,4 @@ trained_models/
 *.pt
 .ipynb_checkpoints
 logs/
+manuscripts/
