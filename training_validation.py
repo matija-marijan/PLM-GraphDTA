@@ -111,6 +111,8 @@ parser.add_argument('--description', type=str, default=None,
                     help="Description to add to run and/or group name for logging (default: None).")
 parser.add_argument('--protein_embedding_type', type=str, default=None,
                     help="Type of precomputed protein embeddings (esm_320, esm_640, esm_1280, esmc_960, esmc_1152, deepfri_bp, deepfri_cc, deepfri_ec, deepfri_mf, prost_1024) (default: None).")
+parser.add_argument('--fold_setting', type=str, default="setting1",
+                    help="Fold setting to use for k-fold cross-validation (setting1, drug_cold_1-5, protein_cold_1-5, fully_blind_1-5) (default: 'setting1').")
 
 args = parser.parse_args()
 
@@ -156,13 +158,16 @@ run_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv_{args.conv_l
 if args.description is not None:
     run_name += f"_desc_{args.description}"
     group_name += f"_desc_{args.description}"
+if args.fold_setting is not None:
+    run_name += f"_folds_{args.fold_setting}"
+    group_name += f"_folds_{args.fold_setting}"
 if args.seed is not None:
     run_name += f"_seed_{args.seed}"
     group_name += f"_seed_{args.seed}"
 run_name += f"_fold_{args.validation_fold}"
 
 if args.wandb:
-    wandb.init(project = 'E-GraphDTA - Validation', config = args, group = group_name, name = run_name)
+    wandb.init(project = 'E-GraphDTA-Validation', config = args, group = group_name, name = run_name)
 
 if args.protein_embedding_type is not None:
     protein_emb_path = f"data/{dataset}/proteins_{args.protein_embedding_type}.json"
@@ -176,7 +181,7 @@ else:
 # Main program: Train on specified dataset 
 if __name__ == "__main__":
     print('Training ' + model_st + ' on ' + dataset + ' dataset...')
-    dta_dataset = DTADataset(root='data', dataset=dataset, protein_embedding_type=args.protein_embedding_type)
+    dta_dataset = DTADataset(root='data', dataset=dataset, protein_embedding_type=args.protein_embedding_type, fold_setting=args.fold_setting)
 
     # original k-fold split (hard coded!)
     all_folds = [0, 1, 2, 3, 4]

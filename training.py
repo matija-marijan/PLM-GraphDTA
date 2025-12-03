@@ -27,12 +27,12 @@ scaler = torch.cuda.amp.GradScaler()
 
 # training function at each epoch
 def train(model, device, train_loader, optimizer, epoch, wandb_log=False):
-    # print('Training on {} samples...'.format(len(train_loader.dataset)))
+    print('Training on {} samples...'.format(len(train_loader.dataset)))
     model.train()
     running_loss = 0.0
     num_batches = 0
-    # for batch_idx, data in tqdm(enumerate(train_loader), total=len(train_loader), leave=False, desc=f"Epoch {epoch}"):
-    for batch_idx, data in enumerate(train_loader):
+    for batch_idx, data in tqdm(enumerate(train_loader), total=len(train_loader), leave=False, desc=f"Epoch {epoch}"):
+    # for batch_idx, data in enumerate(train_loader):
         data = data.to(device, non_blocking=True)
         optimizer.zero_grad()
 
@@ -56,10 +56,10 @@ def predicting(model, device, loader):
     model.eval()
     total_preds = []
     total_labels = []
-    # print('Make prediction for {} samples...'.format(len(loader.dataset)))
+    print('Make prediction for {} samples...'.format(len(loader.dataset)))
     with torch.no_grad():
-        # for data in tqdm(loader, total=len(loader), leave=False, desc="Predicting"):
-        for data in loader:
+        for data in tqdm(loader, total=len(loader), leave=False, desc="Predicting"):
+        # for data in loader:
             data = data.to(device, non_blocking=True)
             with torch.cuda.amp.autocast():
                 output = model(data)
@@ -110,6 +110,8 @@ parser.add_argument('--description', type=str, default=None,
                     help="Description to add to run and/or group name for logging (default: None).")
 parser.add_argument('--protein_embedding_type', type=str, default=None,
                     help="Type of precomputed protein embeddings (esm_320, esm_640, esm_1280, esmc_960, esmc_1152, deepfri_bp, deepfri_cc, deepfri_ec, deepfri_mf, prost_1024) (default: None).")
+parser.add_argument('--fold_setting', type=str, default="setting1",
+                    help="Fold setting to use for k-fold cross-validation (setting1, drug_cold_1-5, protein_cold_1-5, fully_blind_1-5) (default: 'setting1').")
 
 args = parser.parse_args()
 
@@ -155,12 +157,15 @@ run_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv_{args.conv_l
 if args.description is not None:
     run_name += f"_desc_{args.description}"
     group_name += f"_desc_{args.description}"
+if args.fold_setting is not None:
+    run_name += f"_folds_{args.fold_setting}"
+    group_name += f"_folds_{args.fold_setting}"
 if args.seed is not None:
     run_name += f"_seed_{args.seed}"
 # run_name += f"_testing"
 
 if args.wandb:
-    wandb.init(project = 'E-GraphDTA - Testing', config = args, group = group_name, name = run_name)
+    wandb.init(project = 'E-GraphDTA-Testing', config = args, group = group_name, name = run_name)
 
 if args.protein_embedding_type is not None:
     protein_emb_path = f"data/{dataset}/proteins_{args.protein_embedding_type}.json"
@@ -174,7 +179,7 @@ else:
 # Main program: Train on specified dataset 
 if __name__ == "__main__":
     print('Training ' + model_st + ' on ' + dataset + ' dataset...')
-    dta_dataset = DTADataset(root='data', dataset=dataset, protein_embedding_type=args.protein_embedding_type)
+    dta_dataset = DTADataset(root='data', dataset=dataset, protein_embedding_type=args.protein_embedding_type, fold_setting=args.fold_setting)
 
     # Train on all data except the test set (fold == -1)
     train_folds = [0, 1, 2, 3, 4]

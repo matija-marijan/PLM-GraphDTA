@@ -15,12 +15,12 @@ import pickle
 from collections import OrderedDict
 
 class DTADataset(InMemoryDataset):
-    def __init__(self, root: str = 'data', dataset: str = 'davis', protein_embedding_type: str = None): #, target_type: str = None): #, mutation: bool = False): #, cluster_type: str = None):
+    def __init__(self, root: str = 'data', dataset: str = 'davis', protein_embedding_type: str = None, fold_setting: str = "setting1"): #, target_type: str = None): #, mutation: bool = False): #, cluster_type: str = None):
 
         self.root = root
         self.dataset = dataset
         self.protein_embedding_type = protein_embedding_type
-
+        self.fold_setting = fold_setting
         super().__init__(root, transform=None, pre_transform=None)
 
         if os.path.isfile(self.processed_paths[0]):
@@ -45,6 +45,7 @@ class DTADataset(InMemoryDataset):
         # processed_file_names += f"_{self.cluster_type}" if self.cluster_type else ""
         # processed_file_names += f"_{self.target_type}" if self.target_type else ""
         # processed_file_names += f"_mutation.pt" if self.mutation else ".pt"
+        processed_file_names += f"_{self.fold_setting}" if self.fold_setting else ""
         processed_file_names += ".pt"
         return [processed_file_names]
 
@@ -64,8 +65,8 @@ class DTADataset(InMemoryDataset):
         fpath = self.raw_file_names[0] + '/'
 
         # Load fold information
-        train_fold = json.load(open(fpath + "folds/train_fold_setting1.txt"))
-        test_fold = json.load(open(fpath + "folds/test_fold_setting1.txt"))
+        train_fold = json.load(open(f"{fpath}folds/train_fold_{self.fold_setting}.txt"))
+        test_fold = json.load(open(f"{fpath}folds/test_fold_{self.fold_setting}.txt"))
 
         index_to_fold = {}
         for fold_num, fold_indices in enumerate(train_fold):
