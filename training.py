@@ -158,8 +158,8 @@ if args.description is not None:
     run_name += f"_desc_{args.description}"
     group_name += f"_desc_{args.description}"
 if args.fold_setting is not None:
-    run_name += f"_folds_{args.fold_setting}"
-    group_name += f"_folds_{args.fold_setting}"
+    run_name += f"_fold_{args.fold_setting}"
+    group_name += f"_fold_{args.fold_setting}"
 if args.seed is not None:
     run_name += f"_seed_{args.seed}"
 # run_name += f"_testing"
