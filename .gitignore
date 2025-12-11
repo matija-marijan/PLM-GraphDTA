@@ -8,3 +8,4 @@ trained_models/
 .ipynb_checkpoints
 logs/
 manuscripts/
+results/
