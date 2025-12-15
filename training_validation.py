@@ -22,6 +22,7 @@ from utils import *
 import argparse
 from tqdm import tqdm
 import json
+import re
 
 scaler = torch.cuda.amp.GradScaler()
 
@@ -158,9 +159,10 @@ run_name = f"{args.model}_{args.dataset}_plm_{args.plm_layers}_conv_{args.conv_l
 if args.description is not None:
     run_name += f"_desc_{args.description}"
     group_name += f"_desc_{args.description}"
-if args.fold_setting is not None:
+if args.fold_setting is not None and args.fold_setting != "setting1":
     run_name += f"_fold_{args.fold_setting}"
-    group_name += f"_fold_{args.fold_setting}"
+    fold_group_name = re.sub(r"_\d+$", "", args.fold_setting)
+    group_name += f"_fold_{fold_group_name}"
 if args.seed is not None:
     run_name += f"_seed_{args.seed}"
     group_name += f"_seed_{args.seed}"
